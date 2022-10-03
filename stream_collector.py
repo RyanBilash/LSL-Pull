@@ -3,6 +3,7 @@ from pylsl import *
 import time
 import datetime
 
+
 class stream_collector:
     def __init__(self, stream_name, keep_searching=False):
         self.stream_name = stream_name
@@ -37,11 +38,11 @@ class stream_collector:
         return self.cached_time_correction
 
     def get_filename(self):
-        return self.stream_name + '_' + datetime.datetime.now().strftime("%m-%d-%Y_%H-%M-%S")  + '.csv'
+        return self.stream_name + '_' + datetime.datetime.now().strftime("%m-%d-%Y_%H-%M-%S") + '.csv'
 
     def output_csv(self):
         filename = self.get_filename()
-        output_file = open(self.stream_name+".csv", 'w')
+        output_file = open(self.stream_name + ".csv", 'w')
         output_writer = csv.writer(output_file)
 
         for i in self.data:
