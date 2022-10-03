@@ -1,5 +1,7 @@
+import csv
 from pylsl import *
 import time
+import datetime
 
 class stream_collector:
     def __init__(self, stream_name, keep_searching=False):
@@ -18,7 +20,7 @@ class stream_collector:
     def collect(self, chunk_size=1):
         if chunk_size == 1:
             data, timestamp = self.inlet.pull_sample()
-            self.data.append((data, timestamp - self.cached_time_correction))
+            self.data.append((timestamp - self.cached_time_correction, data))
             return [data], [timestamp]
         elif chunk_size > 0:
             data, timestamps = self.inlet.pull_chunk(max_samples=chunk_size)
@@ -34,5 +36,17 @@ class stream_collector:
         self.cached_time_correction = self.inlet.time_correction()
         return self.cached_time_correction
 
+    def get_filename(self):
+        return self.stream_name + '_' + datetime.datetime.now().strftime("%m-%d-%Y_%H-%M-%S")  + '.csv'
+
     def output_csv(self):
-        pass
+        filename = self.get_filename()
+        output_file = open(self.stream_name+".csv", 'w')
+        output_writer = csv.writer(output_file)
+
+        for i in self.data:
+            output_writer.writerow(i)
+            output_file.flush()
+        output_file.close()
+
+        return filename
