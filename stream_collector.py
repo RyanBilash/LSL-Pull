@@ -103,6 +103,9 @@ def listening_thread(stream_name, keep_searching=False, chunk_size=1, log_data=F
     stream = stream_collector(stream_name, keep_searching)
     streams.append(stream)
 
+    # Make sure it doesn't request invalid chunk sizes
+    chunk_size = max(1, chunk_size)
+
     count = 0
     while stream.running:
         # Collect all data and every so many samples
