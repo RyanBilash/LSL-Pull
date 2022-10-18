@@ -12,10 +12,9 @@ where keep_searching is true or false
 and has optional inputs of ';<chunk_size>;<log_data>'
 where chunk_size is an int greater than 0 and log_data is another true or false
 
-Right now the way to write to file is on exiting the program or setting all streams to not running
-This will be changed soon to allow for partial writes soas to not eat up memory and to distribute write workload
-^^ changed to be after so many data entries but might want to change it to be after some time, but that's a later issue
-want to get it to stop the stream when there isn't any more data being collected
+
+After so many data entries per stream it'll print to file and clear stored data to not eat through memory
+Eventually it might be changed to be based on time instead of raw sample count
 """
 
 # How many samples should be stored before writing to file
