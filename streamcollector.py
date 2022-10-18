@@ -29,7 +29,10 @@ TIMEOUT_ACCEPTANCE = 2.25
 # Active streams for simple collection purpose
 streams = []
 
-# Idea: output_files(outfilename) = {timestamp : data} (timestamps are more approximate but still should work)
+# Idea: output_files(outfilename) = {timestamp : {channel : data}}} (timestamps are more approximate but still
+# should work) triple dict for all this - maybe generate timestamps based on the first data entry and the most
+# frequent sample rate of the streams that will be sent to the file but the problem might be with actually figuring
+# that out and relaying that information to the thing; so have a start_time and srate for each file I guess
 output_files = {}
 
 
