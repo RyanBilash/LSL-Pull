@@ -46,17 +46,29 @@ class stream_collector:
 
     def collect(self, chunk_size=1):
         if self.cached_stream_rate != FOREVER:
+            # Predict acceptable time for timeout
             timeout = (1/self.cached_stream_rate)*chunk_size*TIMEOUT_ACCEPTANCE
         else:
             timeout = FOREVER
         if chunk_size == 1:
             data, timestamp = self.inlet.pull_sample(timeout=timeout)
-            self.data.append((timestamp - self.cached_time_correction, data))
+            if len(timestamp) < 1:
+                # If it does timeout stop running and don't record the blank sample
+                self.running = False
+            else:
+                self.data.append((timestamp - self.cached_time_correction, data))
+
+            # Return as array for consistency
             return [data], [timestamp]
         elif chunk_size > 0:
             data, timestamps = self.inlet.pull_chunk(max_samples=chunk_size, timeout=timeout)
             for i in range(len(timestamps)):
                 self.data.append((data[i], timestamps[i] - self.cached_time_correction))
+
+            if len(timestamps) < chunk_size:
+                # If it does timeout stop running
+                self.running = False
+
             return data, timestamps
 
     def stream_rate(self):
