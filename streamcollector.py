@@ -5,25 +5,28 @@ import datetime
 import threading
 import atexit
 
-
 """
 File format (each line) should be '<streamname>;<keep_searching>'
 where keep_searching is true or false
 and has optional inputs of ';<chunk_size>;<log_data>'
 where chunk_size is an int greater than 0 and log_data is another true or false
 
-After so many data entries per stream it'll print to file and clear stored data to not eat through memory
-Eventually it might be changed to be based on time instead of raw sample count
+After so many data entries or time between writes, it'll write all data to file and clear data for the sake of memory
 
 Each stream outputs to a different file because actually aligning the data isn't the easiest but might change later
 """
 
 # How many samples should be stored before writing to file
 COUNT_BREAK = 100
+# How long to wait time-wise between writing to files
+TIME_BREAK = 1000  # 1 second
+# Choose whether to write to file after certain time (f) or sample count (t)
+WRITE_WITH_COUNT = True
 # How much leeway is accepted for timeout (means it will wait for the predicted wait time * acceptance)
 TIMEOUT_ACCEPTANCE = 2.25
 
-class stream_collector:
+
+class StreamCollector:
     def __init__(self, stream_name, keep_searching=True):
         self.stream_name = stream_name
         matching_streams = resolve_stream('name', stream_name)
@@ -47,7 +50,7 @@ class stream_collector:
     def collect(self, chunk_size=1):
         if self.cached_stream_rate != FOREVER:
             # Predict acceptable time for timeout
-            timeout = (1/self.cached_stream_rate)*chunk_size*TIMEOUT_ACCEPTANCE
+            timeout = (1 / self.cached_stream_rate) * chunk_size * TIMEOUT_ACCEPTANCE
         else:
             timeout = FOREVER
         if chunk_size == 1:
@@ -101,23 +104,35 @@ streams = []
 
 def listening_thread(stream_name, keep_searching=False, chunk_size=1, log_data=False):
     # Make new stream, eventually collect data from it
-    stream = stream_collector(stream_name, keep_searching)
+    stream = StreamCollector(stream_name, keep_searching)
     streams.append(stream)
 
     # Make sure it doesn't request invalid chunk sizes
     chunk_size = max(1, chunk_size)
 
-    count = 0
-    while stream.running:
-        # Collect all data and every so many samples
-        data, timestamps = stream.collect(chunk_size)
-        if count >= COUNT_BREAK:
-            stream.output_csv()
-            count = 0
-        else:
-            count += len(timestamps)
-        if log_data:
-            print(data, timestamps)
+
+    if WRITE_WITH_COUNT:
+        count = 0
+        while stream.running:
+            # Collect all data and every so many samples
+            data, timestamps = stream.collect(chunk_size)
+            if count >= COUNT_BREAK:
+                stream.output_csv()
+                count = 0
+            else:
+                count += len(timestamps)
+            if log_data:
+                print(data, timestamps)
+    else:
+        # Write to file after every certain time period
+        last_write = local_clock()
+        while stream.running:
+            data, timestamps = stream.collect(chunk_size)
+            if local_clock() > last_write + TIME_BREAK:
+                stream.output_csv()
+                last_write = local_clock()
+            if log_data:
+                print(data, timestamps)
     stream.output_csv()
 
 
