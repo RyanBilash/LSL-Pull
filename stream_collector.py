@@ -30,6 +30,7 @@ class stream_collector:
         self.cached_time_correction = self.time_correction()
         self.data = []
         self.running = True
+        self.filename = self.stream_name + '_' + datetime.datetime.now().strftime("%m-%d-%Y_%H-%M-%S") + '.csv'
         # self.resample_time_correction_rate = None # Unused method of regathering the time correction
 
     def collect(self, chunk_size=1):
@@ -51,18 +52,16 @@ class stream_collector:
         self.cached_time_correction = self.inlet.time_correction()
         return self.cached_time_correction
 
-    def get_filename(self):
-        return self.stream_name + '_' + datetime.datetime.now().strftime("%m-%d-%Y_%H-%M-%S") + '.csv'
-
     def output_csv(self):
-        filename = self.get_filename()
-        output_file = open(self.stream_name + ".csv", 'w')
+        filename = self.filename
+        output_file = open(filename, 'a')
         output_writer = csv.writer(output_file)
 
         for i in self.data:
             output_writer.writerow(i)
             output_file.flush()
         output_file.close()
+        self.data = []
 
         return filename
 
@@ -74,10 +73,15 @@ def listening_thread(stream_name, keep_searching=False, chunk_size=1, log_data=F
     stream = stream_collector(stream_name, keep_searching)
     streams.append(stream)
 
+    count = 0
     while stream.running:
         data, timestamps = stream.collect(chunk_size)
+        if count % 100 == 0:
+            stream.output_csv()
+            count = 0
         if log_data:
             print(data, timestamps)
+        count += 1
     stream.output_csv()
 
 
