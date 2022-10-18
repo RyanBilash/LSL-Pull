@@ -12,9 +12,10 @@ where keep_searching is true or false
 and has optional inputs of ';<chunk_size>;<log_data>'
 where chunk_size is an int greater than 0 and log_data is another true or false
 
-
 After so many data entries per stream it'll print to file and clear stored data to not eat through memory
 Eventually it might be changed to be based on time instead of raw sample count
+
+Each stream outputs to a different file because actually aligning the data isn't the easiest but might change later
 """
 
 # How many samples should be stored before writing to file
