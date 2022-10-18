@@ -14,41 +14,58 @@ where chunk_size is an int greater than 0 and log_data is another true or false
 
 Right now the way to write to file is on exiting the program or setting all streams to not running
 This will be changed soon to allow for partial writes soas to not eat up memory and to distribute write workload
+^^ changed to be after so many data entries but might want to change it to be after some time, but that's a later issue
+want to get it to stop the stream when there isn't any more data being collected
 """
 
+# How many samples should be stored before writing to file
+COUNT_BREAK = 100
+# How much leeway is accepted for timeout (means it will wait for the predicted wait time * acceptance)
+TIMEOUT_ACCEPTANCE = 2.25
+
 class stream_collector:
-    def __init__(self, stream_name, keep_searching=False):
+    def __init__(self, stream_name, keep_searching=True):
         self.stream_name = stream_name
         matching_streams = resolve_stream('name', stream_name)
 
+        # Keep searching if it should
         while len(matching_streams) == 0 and keep_searching:
             matching_streams = resolve_stream('name', stream_name)
             time.sleep(1)
 
-        self.inlet = StreamInlet(matching_streams[0])
-        self.cached_stream_rate = self.stream_rate()
-        self.cached_time_correction = self.time_correction()
-        self.data = []
-        self.running = True
-        self.filename = self.stream_name + '_' + datetime.datetime.now().strftime("%m-%d-%Y_%H-%M-%S") + '.csv'
+        # Make sure there is at least one stream found
+        if len(matching_streams) > 0:
+            self.inlet = StreamInlet(matching_streams[0])
+            self.cached_stream_rate = self.stream_rate()
+            self.cached_time_correction = self.time_correction()
+            self.data = []
+            self.running = True
+            # Set the outfile to be based on the name of the stream and the start time for the data
+            self.filename = self.stream_name + '_' + datetime.datetime.now().strftime("%m-%d-%Y_%H-%M-%S") + '.csv'
         # self.resample_time_correction_rate = None # Unused method of regathering the time correction
 
     def collect(self, chunk_size=1):
+        if self.cached_stream_rate != FOREVER:
+            timeout = (1/self.cached_stream_rate)*chunk_size*TIMEOUT_ACCEPTANCE
+        else:
+            timeout = FOREVER
         if chunk_size == 1:
-            data, timestamp = self.inlet.pull_sample()
+            data, timestamp = self.inlet.pull_sample(timeout=timeout)
             self.data.append((timestamp - self.cached_time_correction, data))
             return [data], [timestamp]
         elif chunk_size > 0:
-            data, timestamps = self.inlet.pull_chunk(max_samples=chunk_size)
+            data, timestamps = self.inlet.pull_chunk(max_samples=chunk_size, timeout=timeout)
             for i in range(len(timestamps)):
                 self.data.append((data[i], timestamps[i] - self.cached_time_correction))
             return data, timestamps
 
     def stream_rate(self):
+        # Update the stream rate and cache it; it shouldn't change and isn't entirely necessary; primarily for logging
         self.cached_stream_rate = self.inlet.info().nominal_srate()
         return self.cached_stream_rate
 
     def time_correction(self):
+        # Update time correction and cache it, returning the new value
         self.cached_time_correction = self.inlet.time_correction()
         return self.cached_time_correction
 
@@ -58,6 +75,7 @@ class stream_collector:
         output_writer = csv.writer(output_file)
 
         for i in self.data:
+            # For some reason the file needs to be flushed at every row which it shouldn't need to
             output_writer.writerow(i)
             output_file.flush()
         output_file.close()
@@ -70,18 +88,21 @@ streams = []
 
 
 def listening_thread(stream_name, keep_searching=False, chunk_size=1, log_data=False):
+    # Make new stream, eventually collect data from it
     stream = stream_collector(stream_name, keep_searching)
     streams.append(stream)
 
     count = 0
     while stream.running:
+        # Collect all data and every so many samples
         data, timestamps = stream.collect(chunk_size)
-        if count % 100 == 0:
+        if count >= COUNT_BREAK:
             stream.output_csv()
             count = 0
+        else:
+            count += len(timestamps)
         if log_data:
             print(data, timestamps)
-        count += 1
     stream.output_csv()
 
 
@@ -110,6 +131,7 @@ def read_file(filename):
             continue
 
         if listener_args is not None:
+            # Create new threads for each of the streams so they don't interfere with each other
             thread = threading.Thread(target=listening_thread, args=listener_args)
             thread.start()
             print(listener_args[0] + " thread started")
@@ -118,6 +140,7 @@ def read_file(filename):
 
 
 def exit_handler():
+    # Just make sure to exit streams properly instead of just quitting the program
     for stream in streams:
         stream.running = False
 
@@ -125,3 +148,4 @@ def exit_handler():
 if __name__ == "__main__":
     in_filename = input("Input filepath for file with stream names: ")
     atexit.register(exit_handler)
+    read_file(in_filename)
