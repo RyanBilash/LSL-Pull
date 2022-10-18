@@ -8,8 +8,9 @@ import atexit
 """
 File format (each line) should be '<streamname>;<keep_searching>'
 where keep_searching is true or false
-and has optional inputs of ';<chunk_size>;<log_data>'
+and has optional inputs of ';<chunk_size>;<log_data>;<outfile>'
 where chunk_size is an int greater than 0 and log_data is another true or false
+and outfile can have .csv but it isn't necessary
 
 After so many data entries or time between writes, it'll write all data to file and clear data for the sake of memory
 
@@ -27,6 +28,9 @@ TIMEOUT_ACCEPTANCE = 2.25
 
 # Active streams for simple collection purpose
 streams = []
+
+# Idea: output_files(outfilename) = {timestamp : data} (timestamps are more approximate but still should work)
+output_files = {}
 
 
 class StreamCollector:
