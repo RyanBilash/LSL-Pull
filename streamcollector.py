@@ -25,6 +25,9 @@ WRITE_WITH_COUNT = True
 # How much leeway is accepted for timeout (means it will wait for the predicted wait time * acceptance)
 TIMEOUT_ACCEPTANCE = 2.25
 
+# Active streams for simple collection purpose
+streams = []
+
 
 class StreamCollector:
     def __init__(self, stream_name, keep_searching=True):
@@ -99,9 +102,6 @@ class StreamCollector:
         return filename
 
 
-streams = []
-
-
 def listening_thread(stream_name, keep_searching=False, chunk_size=1, log_data=False):
     # Make new stream, eventually collect data from it
     stream = StreamCollector(stream_name, keep_searching)
@@ -109,7 +109,6 @@ def listening_thread(stream_name, keep_searching=False, chunk_size=1, log_data=F
 
     # Make sure it doesn't request invalid chunk sizes
     chunk_size = max(1, chunk_size)
-
 
     if WRITE_WITH_COUNT:
         count = 0
@@ -152,7 +151,7 @@ def read_file(filename):
                 split_line[2] = split_line[2].replace(" ", "")
                 listener_args.append(int(split_line[2]))
 
-            # Get whether or not data should be logged to console
+            # Get whether data should be logged to console
             if len(split_line) > 3:
                 split_line[3] = split_line[3].replace(" ", "")
                 listener_args.append(split_line[3].lower().startswith('t'))
