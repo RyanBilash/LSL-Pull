@@ -79,7 +79,7 @@ class StreamCollector:
                 # If it does timeout stop running and don't record the blank sample
                 self.running = False
             else:
-                self.data.append((timestamp - self.cached_time_correction, data))
+                self.data.append((data, timestamp - self.cached_time_correction))
 
             # Return as array for consistency
             return [data], [timestamp]
@@ -100,13 +100,20 @@ class StreamCollector:
             # then clear own data
             # then eventually write something from the outfiles to the files
             # output_files[self.outfile][]
-            out_keys = list(output_files.keys())
+            out_keys = list(output_files[self.outfile].keys())
             out_keys.remove("srate")
             out_keys.remove("channel_count")
 
             out_timestamps = [int(i) for i in out_keys]
             # get closest
             # if timestamp in out_timestamps then do it; otherwise do the search
+            for item in self.data:
+                if item[1] in out_timestamps:
+                    loc = item[1]
+                else:
+                    loc = closest(item[1], out_timestamps)
+                # output_files[self.outfile][loc].append() # append the data straight up or not? might want channel names
+
             pass
         else:
             return
@@ -156,15 +163,16 @@ def closest_timestamp(num, timestamps, start=-1, end=-1):
     else:
         return timestamps[mid]
 
+
 # this works, but will be less efficient than binary recursive method
 def closest(num, timestamps):
     timestamps.sort()
-    for i in range(len(timestamps)-1):
+    for i in range(len(timestamps) - 1):
         if timestamps[i] < num < timestamps[i + 1]:
-            if num - timestamps[i] <= timestamps[i+1] - num:
+            if num - timestamps[i] <= timestamps[i + 1] - num:
                 return timestamps[i]
             else:
-                return timestamps[i+1]
+                return timestamps[i + 1]
 
 
 def listening_thread(stream_name, keep_searching=False, chunk_size=1, log_data=False, outfile=False):
