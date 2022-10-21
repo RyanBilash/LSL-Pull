@@ -26,6 +26,10 @@ WRITE_WITH_COUNT = True
 # How much leeway is accepted for timeout (means it will wait for the predicted wait time * acceptance)
 TIMEOUT_ACCEPTANCE = 2.25
 
+# Minimum amount of timestamps for a file before adding more
+MIN_TIMESTAMPS = 10
+TIMESTAMPS_TO_ADD = COUNT_BREAK * 3
+
 # Active streams for simple collection purpose
 streams = []
 
@@ -105,16 +109,25 @@ class StreamCollector:
             out_keys.remove("channel_count")
 
             out_timestamps = [int(i) for i in out_keys]
-            # get closest
-            # if timestamp in out_timestamps then do it; otherwise do the search
+            if len(out_timestamps) < MIN_TIMESTAMPS:
+                start_timestamp = max(out_timestamps, self.data[0][1])
+                timestamp_diff = 1000 / output_files[self.outfile]["srate"] # might have to change the rate here and
+                # elsewhere
+                for i in range(1,TIMESTAMPS_TO_ADD):
+                    output_files[self.outfile][int(start_timestamp + timestamp_diff)] = {} # add the new timestamps
+                    # as dicts so that the stream channels can be accessed
+
             for item in self.data:
                 if item[1] in out_timestamps:
                     loc = item[1]
                 else:
                     loc = closest(item[1], out_timestamps)
-                # output_files[self.outfile][loc].append() # append the data straight up or not? might want channel names
+                for i in range(len(item[0])):
+                    output_files[self.outfile][loc][self.stream_name+str(i)] = item[0][i]
 
-            pass
+            self.data = [] # TODO might want to do something a bit different
+
+
         else:
             return
 
