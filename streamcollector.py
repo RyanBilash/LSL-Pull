@@ -59,6 +59,7 @@ class StreamCollector:
             if outfile:
                 self.filename = str(outfile) + '.csv'
                 output_files[outfile]["srate"] = min(output_files[outfile]["srate"], self.cached_stream_rate)
+                output_files[outfile]["channel_count"] += self.inlet.channel_count
             else:
                 self.filename = self.stream_name + '_' + datetime.datetime.now().strftime("%m-%d-%Y_%H-%M-%S") + '.csv'
         # self.resample_time_correction_rate = None # Unused method of regathering the time correction
@@ -98,7 +99,14 @@ class StreamCollector:
             # get the outfile then get the closest timestamp
             # then clear own data
             # then eventually write something from the outfiles to the files
-            #output_files[self.outfile][]
+            # output_files[self.outfile][]
+            out_keys = list(output_files.keys())
+            out_keys.remove("srate")
+            out_keys.remove("channel_count")
+
+            out_timestamps = [int(i) for i in out_keys]
+            # get closest
+            # if timestamp in out_timestamps then do it; otherwise do the search
             pass
         else:
             return
@@ -128,9 +136,40 @@ class StreamCollector:
         return filename
 
 
-def listening_thread(stream_name, keep_searching=False, chunk_size=1, log_data=False):
+def closest_timestamp(num, timestamps, start=-1, end=-1):
+    if start == -1 and end == -1:
+        timestamps.sort()
+        start = 0
+        end = len(timestamps) - 1
+
+    if end - start <= 1:
+        if num < timestamps[start]:
+            return timestamps[start - 1]
+        else:
+            return timestamps[start]
+
+    mid = (start + end) // 2
+    if timestamps[mid] > num:
+        return closest_timestamp(num, timestamps, start, mid + 1)
+    elif timestamps[mid] < num:
+        return closest_timestamp(num, timestamps, mid - 1, end)
+    else:
+        return timestamps[mid]
+
+# this works, but will be less efficient than binary recursive method
+def closest(num, timestamps):
+    timestamps.sort()
+    for i in range(len(timestamps)-1):
+        if timestamps[i] < num < timestamps[i + 1]:
+            if num - timestamps[i] <= timestamps[i+1] - num:
+                return timestamps[i]
+            else:
+                return timestamps[i+1]
+
+
+def listening_thread(stream_name, keep_searching=False, chunk_size=1, log_data=False, outfile=False):
     # Make new stream, eventually collect data from it
-    stream = StreamCollector(stream_name, keep_searching)
+    stream = StreamCollector(stream_name, keep_searching, outfile)
     streams.append(stream)
 
     # Make sure it doesn't request invalid chunk sizes
@@ -186,7 +225,7 @@ def read_file(filename):
                 split_line[4] = split_line[4].replace(" ", "")
                 listener_args.append(split_line[4])
                 # Put new filename into the list of files
-                output_files[split_line[4]] = {"srate": 9999999}
+                output_files[split_line[4]] = {"srate": 9999999, "channel_count": 0}
         except:
             print('Error with line "' + line + '"')
             continue
