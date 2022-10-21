@@ -33,11 +33,12 @@ streams = []
 # should work) triple dict for all this - maybe generate timestamps based on the first data entry and the most
 # frequent sample rate of the streams that will be sent to the file but the problem might be with actually figuring
 # that out and relaying that information to the thing; so have a start_time and srate for each file I guess
+# I should draw this out or something
 output_files = {}
 
 
 class StreamCollector:
-    def __init__(self, stream_name, keep_searching=True):
+    def __init__(self, stream_name, keep_searching=True, outfile=False):
         self.stream_name = stream_name
         matching_streams = resolve_stream('name', stream_name)
 
@@ -54,7 +55,12 @@ class StreamCollector:
             self.data = []
             self.running = True
             # Set the outfile to be based on the name of the stream and the start time for the data
-            self.filename = self.stream_name + '_' + datetime.datetime.now().strftime("%m-%d-%Y_%H-%M-%S") + '.csv'
+            self.outfile = outfile
+            if outfile:
+                self.filename = str(outfile) + '.csv'
+                output_files[outfile]["srate"] = min(output_files[outfile]["srate"], self.cached_stream_rate)
+            else:
+                self.filename = self.stream_name + '_' + datetime.datetime.now().strftime("%m-%d-%Y_%H-%M-%S") + '.csv'
         # self.resample_time_correction_rate = None # Unused method of regathering the time correction
 
     def collect(self, chunk_size=1):
@@ -63,6 +69,9 @@ class StreamCollector:
             timeout = (1 / self.cached_stream_rate) * chunk_size * TIMEOUT_ACCEPTANCE
         else:
             timeout = FOREVER
+
+        # Have to check if outfile exists then it should output to that? nah, Imma just have it in a separate function
+
         if chunk_size == 1:
             data, timestamp = self.inlet.pull_sample(timeout=timeout)
             if len(timestamp) < 1:
@@ -83,6 +92,16 @@ class StreamCollector:
                 self.running = False
 
             return data, timestamps
+
+    def send_data_to_dict(self):
+        if self.outfile:
+            # get the outfile then get the closest timestamp
+            # then clear own data
+            # then eventually write something from the outfiles to the files
+            #output_files[self.outfile][]
+            pass
+        else:
+            return
 
     def stream_rate(self):
         # Update the stream rate and cache it; it shouldn't change and isn't entirely necessary; primarily for logging
@@ -162,6 +181,12 @@ def read_file(filename):
             if len(split_line) > 3:
                 split_line[3] = split_line[3].replace(" ", "")
                 listener_args.append(split_line[3].lower().startswith('t'))
+
+            if len(split_line) > 4:
+                split_line[4] = split_line[4].replace(" ", "")
+                listener_args.append(split_line[4])
+                # Put new filename into the list of files
+                output_files[split_line[4]] = {"srate": 9999999}
         except:
             print('Error with line "' + line + '"')
             continue
