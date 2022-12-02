@@ -69,7 +69,7 @@ class StreamCollector:
         elif chunk_size > 0:
             data, timestamps = self.inlet.pull_chunk(max_samples=chunk_size, timeout=timeout)
             for i in range(len(timestamps)):
-                self.data.append((data[i], timestamps[i] - self.cached_time_correction))
+                self.data.append((timestamps[i] - self.cached_time_correction, data[i]))
 
             if len(timestamps) < chunk_size:
                 # If it does timeout stop running
