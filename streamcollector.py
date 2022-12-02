@@ -58,7 +58,7 @@ class StreamCollector:
             timeout = FOREVER
         if chunk_size == 1:
             data, timestamp = self.inlet.pull_sample(timeout=timeout)
-            if len(timestamp) < 1:
+            if not timestamp:
                 # If it does timeout stop running and don't record the blank sample
                 self.running = False
             else:
