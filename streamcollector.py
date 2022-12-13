@@ -79,18 +79,24 @@ class StreamCollector:
 
         if chunk_size == 1:
             data, timestamp = self.inlet.pull_sample(timeout=timeout)
-            if len(timestamp) < 1:
+            if not timestamp:
                 # If it does timeout stop running and don't record the blank sample
                 self.running = False
             else:
-                self.data.append((data, timestamp - self.cached_time_correction))
+                tempData = [timestamp - self.cached_time_correction]
+                for j in range(len(data)):
+                    tempData.append(data[j])
+                self.data.append(tempData)
 
             # Return as array for consistency
             return [data], [timestamp]
         elif chunk_size > 0:
             data, timestamps = self.inlet.pull_chunk(max_samples=chunk_size, timeout=timeout)
             for i in range(len(timestamps)):
-                self.data.append((data[i], timestamps[i] - self.cached_time_correction))
+                tempData = [timestamps[i] - self.cached_time_correction]
+                for j in range(len(data[i])):
+                    tempData.append(data[i][j])
+                self.data.append(tempData)
 
             if len(timestamps) < chunk_size:
                 # If it does timeout stop running
@@ -264,6 +270,8 @@ def exit_handler():
     # Just make sure to exit streams properly instead of just quitting the program
     for stream in streams:
         stream.running = False
+        stream.output_csv()
+    quit(1)
 
 
 if __name__ == "__main__":
