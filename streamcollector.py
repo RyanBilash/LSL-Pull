@@ -76,7 +76,7 @@ class StreamCollector:
             timeout = FOREVER
 
         # Have to check if outfile exists then it should output to that? nah, Imma just have it in a separate function
-
+        # TODO fix the sending data to dict I think because it got messed up in the merge
         if chunk_size == 1:
             data, timestamp = self.inlet.pull_sample(timeout=timeout)
             if not timestamp:
